@@ -47,7 +47,6 @@ void InterpolationForwardKernelCPU(Dtype const *const p_in_feat,
                                    uint32_t const nnz) {
   const Dtype *p_curr_in;
   Dtype *p_curr_out;
-
   // Set all values to - Dtype min
   // std::fill(p_out_feat, p_out_feat + nnz * nchannel, 0);
 
@@ -56,6 +55,7 @@ void InterpolationForwardKernelCPU(Dtype const *const p_in_feat,
     // Define current pointers
     p_curr_in = p_in_feat + in_maps[i] * nchannel;
     p_curr_out = p_out_feat + out_maps[i] * nchannel;
+
     cpu_axpy<Dtype>(nchannel, (Dtype)weights[i], p_curr_in, p_curr_out);
   }
 }
@@ -84,6 +84,76 @@ void InterpolationBackwardKernelCPU(Dtype *p_grad_in_feat,
                     p_curr_grad_in);
   }
 }
+
+
+template <typename Dtype, typename Wtype, typename Itype>
+void InterpolationNormWeightForwardKernelCPU(Dtype const *const p_in_feat,
+                                   Dtype *p_out_feat,           //
+                                   uint32_t const nchannel,     //
+                                   Itype const *const in_maps,  //
+                                   Itype const *const out_maps, //
+                                   Wtype  *const weights,  //
+                                   uint32_t const nnz) {
+  const Dtype *p_curr_in;
+  Dtype *p_curr_out;
+  Dtype  p_weight_sum[sizeof(p_out_feat)]={0};
+  Dtype *p_curr_weight_sum;
+  //torch::Tensor  const * const one_vector = torch::ones({1, 1}, *p_out_feat.options());
+  Dtype one_vector[1*1]{1};
+  // Set all values to - Dtype min
+  // std::fill(p_out_feat, p_out_feat + nnz * nchannel, 0);
+
+  // Iterate through each spatial kernel out of filter_volume spatial kernels
+  for (uint32_t i = 0; i < nnz; ++i) {
+    // Define current pointers
+    p_curr_weight_sum = p_weight_sum+out_maps[i]*1;
+    cpu_axpy<Dtype>(1, (Dtype)weights[i], one_vector, p_curr_weight_sum);
+  }
+  for (uint32_t i = 0; i < nnz; ++i) {
+    // Define current pointers
+    p_curr_in = p_in_feat + in_maps[i] * nchannel;
+    p_curr_out = p_out_feat + out_maps[i] * nchannel;
+    // Dtype modified_weight=weights[i]/p_weight_sum[out_maps[i]];
+    // cpu_axpy<Dtype>(nchannel, modified_weight, p_curr_in, p_curr_out);
+    weights[i]=weights[i]/p_weight_sum[out_maps[i]];
+    cpu_axpy<Dtype>(nchannel, (Dtype)weights[i], p_curr_in, p_curr_out);
+  }
+}
+
+template <typename Dtype, typename Wtype, typename Itype>
+void InterpolationNormWeightBackwardKernelCPU(Dtype *p_grad_in_feat,
+                                    uint32_t const in_nrows,
+                                    uint32_t const nchannel, //
+                                    Dtype const *const p_grad_out_feat,
+                                    Itype const *const in_maps, //
+                                    Itype const *const out_maps,
+                                    Wtype const *const weights,
+                                    uint32_t const nnz) {
+  Dtype *p_curr_grad_in;
+  Dtype const *p_curr_grad_out;
+  
+  // Dtype  p_weight_sum[sizeof(p_grad_in_feat)]={0};
+  // Dtype *p_curr_weight_sum;
+  // Dtype one_vector[1*1]{1};
+  // // cleanup gradients
+  // // std::fill(p_grad_in_feat, p_grad_in_feat + in_nrows * nchannel, 0);
+  // for (uint32_t i = 0; i < nnz; ++i) {
+  //   // Define current pointers
+  //   p_curr_weight_sum = p_weight_sum+out_maps[i]*1;
+  //   cpu_axpy<Dtype>(1, (Dtype)weights[i], one_vector, p_curr_weight_sum);
+  // }
+
+
+  for (uint32_t i = 0; i < nnz; ++i) {
+    // Define current pointers
+    p_curr_grad_in = p_grad_in_feat + in_maps[i] * nchannel;
+    p_curr_grad_out = p_grad_out_feat + out_maps[i] * nchannel;
+    //weights[i]=weights[i]/p_weight_sum[out_maps[i]];
+    cpu_axpy<Dtype>(nchannel, (Dtype)weights[i], p_curr_grad_out,
+                    p_curr_grad_in);
+  }
+}
+
 
 template void
 InterpolationForwardKernelCPU<float, float, int>(float const *const p_in_feat,
@@ -122,6 +192,47 @@ template void InterpolationBackwardKernelCPU<double, float, int>(
     int const *const out_maps,  //
     float const *const weights, //
     uint32_t const nnz);
+
+
+template void
+InterpolationNormWeightForwardKernelCPU<float, float, int>(float const *const p_in_feat,
+                                                 float *p_out_feat,          //
+                                                 uint32_t const nchannel,    //
+                                                 int const *const in_maps,   //
+                                                 int const *const out_maps,  //
+                                                 float  *const weights, //
+                                                 uint32_t const nnz);
+
+template void
+InterpolationNormWeightForwardKernelCPU<double, float, int>(double const *const p_in_feat,
+                                                  double *p_out_feat,         //
+                                                  uint32_t const nchannel,    //
+                                                  int const *const in_maps,   //
+                                                  int const *const out_maps,  //
+                                                  float  *const weights, //
+                                                  uint32_t const nnz);
+
+template void InterpolationNormWeightBackwardKernelCPU<float, float, int>(
+    float *p_grad_in_feat,   //
+    uint32_t const in_nrows, //
+    uint32_t const nchannel, //
+    float const *const p_grad_out_feat,
+    int const *const in_maps,   //
+    int const *const out_maps,  //
+    float const *const weights, //
+    uint32_t const nnz);
+
+template void InterpolationNormWeightBackwardKernelCPU<double, float, int>(
+    double *p_grad_in_feat,  //
+    uint32_t const in_nrows, //
+    uint32_t const nchannel, //
+    double const *const p_grad_out_feat,
+    int const *const in_maps,   //
+    int const *const out_maps,  //
+    float const *const weights, //
+    uint32_t const nnz);
+
+
 
 } // namespace minkowski
 

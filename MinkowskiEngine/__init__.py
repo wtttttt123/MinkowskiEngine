@@ -179,6 +179,7 @@ from MinkowskiUnion import MinkowskiUnion, MinkowskiUnionFunction
 from MinkowskiInterpolation import (
     MinkowskiInterpolation,
     MinkowskiInterpolationFunction,
+    MinkowskiInterpolationNormWeightFunction,
 )
 
 from MinkowskiNetwork import MinkowskiNetwork

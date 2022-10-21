@@ -446,6 +446,22 @@ InterpolationBackwardCPU(at::Tensor &grad_out_feat,      //
                          CoordinateMapKey *p_in_map_key, //
                          cpu_manager_type<coordinate_type> *p_map_manager);
 
+template <typename coordinate_type>
+std::vector<at::Tensor>
+InterpolationNormWeightForwardCPU(at::Tensor const &in_feat,      //
+                        at::Tensor const &tfield,       //
+                        CoordinateMapKey *p_in_map_key, //
+                        cpu_manager_type<coordinate_type> *p_map_manager);
+
+template <typename coordinate_type>
+at::Tensor
+InterpolationNormWeightBackwardCPU(at::Tensor &grad_out_feat,      //
+                         at::Tensor const &in_map,       //
+                         at::Tensor const &out_map,      //
+                         at::Tensor const &weight,       //
+                         CoordinateMapKey *p_in_map_key, //
+                         cpu_manager_type<coordinate_type> *p_map_manager);
+
 #ifndef CPU_ONLY
 template <typename coordinate_type,
           template <typename C> class TemplatedAllocator>
@@ -570,6 +586,14 @@ void instantiate_cpu_func(py::module &m, const std::string &dtypestr) {
 
   m.def((std::string("InterpolationBackwardCPU") + dtypestr).c_str(),
         &minkowski::InterpolationBackwardCPU<coordinate_type>,
+        py::call_guard<py::gil_scoped_release>());
+
+  m.def((std::string("InterpolationNormWeightForwardCPU") + dtypestr).c_str(),
+        &minkowski::InterpolationNormWeightForwardCPU<coordinate_type>,
+        py::call_guard<py::gil_scoped_release>());
+
+  m.def((std::string("InterpolationNormWeightBackwardCPU") + dtypestr).c_str(),
+        &minkowski::InterpolationNormWeightBackwardCPU<coordinate_type>,
         py::call_guard<py::gil_scoped_release>());
 }
 

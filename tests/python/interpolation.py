@@ -22,6 +22,7 @@
 # Please cite "4D Spatio-Temporal ConvNets: Minkowski Convolutional Neural
 # Networks", CVPR'19 (https://arxiv.org/abs/1904.08755) if you use any part
 # of the code.
+from tkinter.tix import Tree
 import torch
 import unittest
 
@@ -36,6 +37,7 @@ from utils.gradcheck import gradcheck
 from tests.python.common import data_loader
 
 LEAK_TEST_ITER = 10000000
+LEAK_TEST_ITER = 100
 
 
 class TestInterpolation(unittest.TestCase):
@@ -54,8 +56,8 @@ class TestInterpolation(unittest.TestCase):
         input = SparseTensor(feats, coordinates=coords)
         interp = MinkowskiInterpolation(return_kernel_map=True, return_weights=False)
         output, (in_map, out_map) = interp(input, tfield)
-        print(input)
-        print(output)
+        #print(input)
+        #print(output)
 
         # Check backward
         output.sum().backward()
@@ -99,8 +101,8 @@ class TestInterpolation(unittest.TestCase):
         input = SparseTensor(feats, coordinates=coords, device="cuda")
         interp = MinkowskiInterpolation()
         output = interp(input, tfield)
-        print(input)
-        print(output)
+        #print(input)
+        #print(output)
 
         output.sum().backward()
         # Check backward
@@ -144,14 +146,14 @@ class TestInterpolation(unittest.TestCase):
         # samples with original coordinates, OK for now
         samples = pc
         y = interp(x, samples)
-        print(y.shape, y.stride())
+        #print(y.shape, y.stride())
         torch.sum(y).backward()
 
         # samples with all zeros, shape is inconsistent and backward gives error
         samples = torch.zeros_like(pc)
         samples[:, 0] = 0
         y = interp(x, samples)
-        print(y.shape, y.stride())
+        #print(y.shape, y.stride())
         torch.sum(y).backward()
 
     def test_strided_tensor(self):
@@ -170,5 +172,110 @@ class TestInterpolation(unittest.TestCase):
         input = SparseTensor(feats, coordinates=coords, tensor_stride=2)
         interp = MinkowskiInterpolation()
         output = interp(input, tfield)
-        print(input)
-        print(output)
+        #print(input)
+        #print(output)
+
+
+class TestInterpolation3D(unittest.TestCase):
+    def test(self):
+        in_channels, D = 2, 3
+        coords = torch.IntTensor([[0, 0, 0,0], [0, 0, 0,1], [0, 0, 1, 0],[0, 0, 1,1],[0, 1, 0,0],[0, 1, 0,1],[0, 1, 1,0],[0,1,1,1]])
+        coords = torch.IntTensor([[0, 0, 0,0], [0, 0, 0,1], [0, 0, 1, 0],[0, 0, 1,1],[0, 1, 0,0],[0, 1, 0,1],[0, 1, 1,0]])
+        feats = torch.zeros(len(coords), 3)
+        feats[:-1,:]=coords[:-1,1:]
+        feats=coords[:,1:]
+        #print("fff",feats)
+        feats = feats.double()
+        tfield = torch.Tensor(
+            [
+                [0, 0.2, 0.2, 0.2],
+                #[0, 0.3, 0.6, 1.0],
+                [0, 0.5, 0.5, 0.5],
+                #[0, 0.5, 0.5, 0.2],
+            ]
+        ).double()
+        feats.requires_grad_()
+        input = SparseTensor(feats, coordinates=coords)
+        interp = MinkowskiInterpolation(return_kernel_map=True, return_weights=True, normalise_weight=False)
+        output, (in_map, out_map),weights = interp(input, tfield)
+        #print('input_test',input)
+        print("weights",weights,weights.shape)
+        print("in_map",in_map)
+        print("out_map",out_map)
+        print('output',output)
+
+        # Check backward
+        output.sum().backward()
+        fn = MinkowskiInterpolationFunction()
+        self.assertTrue(
+            gradcheck(
+                fn,
+                (
+                    input.F,
+                    tfield,
+                    input.coordinate_map_key,
+                    input._manager,
+                ),
+            )
+        )
+
+        for i in range(LEAK_TEST_ITER):
+            input = SparseTensor(feats, coordinates=coords)
+            tfield = torch.DoubleTensor(
+                [
+
+                    [0, 0.1, 2.7, 2.2],
+                    [0, 0.3, 2, 1],
+                    [1, 1.5, 2.5, 1.0],
+
+                ],
+            )
+            output, _ , _= interp(input, tfield)
+            output.sum().backward()
+
+    def test_gpu(self):
+        in_channels, D = 2, 3
+        coords = torch.IntTensor([[0, 0, 2,1], [0, 0, 4,2], [1, 2, 4,1]])
+        feats = torch.rand(len(coords), 1)
+        feats=coords[:,1:]
+        feats = feats.double()
+        tfield = torch.cuda.DoubleTensor(
+            [
+                [0, 0.1, 2.7, 2.2],
+                [0, 0.3, 2, 1],
+                [1, 1.5, 2.5, 1.0],
+            ],
+        )
+        feats.requires_grad_()
+        input = SparseTensor(feats, coordinates=coords, device="cuda")
+        interp = MinkowskiInterpolation()
+        output = interp(input, tfield)
+        # print(input)
+        # print(output)
+
+        output.sum().backward()
+        # Check backward
+        fn = MinkowskiInterpolationFunction()
+        self.assertTrue(
+            gradcheck(
+                fn,
+                (
+                    input.F,
+                    tfield,
+                    input.coordinate_map_key,
+                    input._manager,
+                ),
+            )
+        )
+
+        for i in range(LEAK_TEST_ITER):
+            input = SparseTensor(feats, coordinates=coords, device="cuda")
+            tfield = torch.cuda.DoubleTensor(
+                [
+                    [0, 0.1, 2.7, 2.2],
+                    [0, 0.3, 2, 1],
+                    [1, 1.5, 2.5, 1.0],
+                ],
+            )
+            output = interp(input, tfield)
+            output.sum().backward()

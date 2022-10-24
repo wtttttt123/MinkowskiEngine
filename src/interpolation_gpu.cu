@@ -142,19 +142,21 @@ std::vector<at::Tensor> InterpolationNormWeightForwardGPU(
   auto const &in_maps = map_weight[0];
   auto const &out_maps = map_weight[1];
   auto const &weights = map_weight[2];
+  std::cout<<"weights_gpu"<<weights<<std::endl;
+  torch::Tensor one_vector = at::ones({in_feat.size(0), 1},in_feat.options());
 
-  torch::Tensor one_vector = at::ones({tfield.size(0), 1});
-
-  auto modified_weights= coo_spmm<int>(out_maps, in_maps, weights, tfield.size(0),
+  auto sum_weights= coo_spmm<int>(out_maps, in_maps, weights, tfield.size(0),
                                 in_feat.size(0), one_vector, 1, false);
-  map_weight[2]=modified_weights;
-  std::cout<<"modified_weights_gpu"<<modified_weights<<std::endl;
+  //map_weight[2]=modified_weights;
+  std::cout<<"sum_weights_gpu"<<sum_weights<<std::endl;
   LOG_DEBUG("InterpolationForwardKernelGPU");
   auto out_feat = coo_spmm<int>(out_maps, in_maps, weights, tfield.size(0),
                                 in_feat.size(0), in_feat, 1, false);
   LOG_DEBUG("out_feat shape: (", out_feat.size(0), ",", out_feat.size(1), ")");
+
+  auto final_out=at::div(out_feat,sum_weights);
   // to out_feats
-  map_weight.insert(map_weight.begin(), out_feat);
+  map_weight.insert(map_weight.begin(), final_out);
   return map_weight;
 }
 

@@ -234,25 +234,33 @@ class TestInterpolation3D(unittest.TestCase):
             output.sum().backward()
 
     def test_gpu(self):
-        in_channels, D = 2, 3
-        coords = torch.IntTensor([[0, 0, 2,1], [0, 0, 4,2], [1, 2, 4,1]])
-        feats = torch.rand(len(coords), 1)
+        in_channels, D = 3, 3
+        coords = torch.IntTensor([[0, 0, 0,0], [0, 0, 0,1], [0, 0, 1, 0],[0, 0, 1,1],[0, 1, 0,0],[0, 1, 0,1],[0, 1, 1,0],[0,1,1,1]])
+        coords = torch.IntTensor([[0, 0, 0,0], [0, 0, 0,1], [0, 0, 1, 0],[0, 0, 1,1],[0, 1, 0,0],[0, 1, 0,1],[0, 1, 1,0]])
+
+        feats = torch.zeros(len(coords), 3)
+        feats[:-1,:]=coords[:-1,1:]
         feats=coords[:,1:]
+        #print("fff",feats)
         feats = feats.double()
         tfield = torch.cuda.DoubleTensor(
             [
-                [0, 0.1, 2.7, 2.2],
-                [0, 0.3, 2, 1],
-                [1, 1.5, 2.5, 1.0],
-            ],
+                [0, 0.2, 0.2, 0.2],
+                #[0, 0.3, 0.6, 1.0],
+                [0, 0.5, 0.5, 0.5],
+                #[0, 0.5, 0.5, 0.2],
+            ]
         )
         feats.requires_grad_()
         input = SparseTensor(feats, coordinates=coords, device="cuda")
         interp = MinkowskiInterpolation(return_kernel_map=True, return_weights=True, normalise_weight=True)
-        output, (in_map, out_map),weights = interp(input, tfield)
+        output, (in_map, out_map), weights = interp(input, tfield)
+
         print("input_gpu",input)
         print("output_gpu",output)
-
+        print("weights_gpu",weights,weights.shape)
+        print("in_map_gpu",in_map)
+        print("out_map_gpu",out_map)
         output.sum().backward()
         # Check backward
         fn = MinkowskiInterpolationFunction()
@@ -268,14 +276,14 @@ class TestInterpolation3D(unittest.TestCase):
             )
         )
 
-        for i in range(LEAK_TEST_ITER):
-            input = SparseTensor(feats, coordinates=coords, device="cuda")
-            tfield = torch.cuda.DoubleTensor(
-                [
-                    [0, 0.1, 2.7, 2.2],
-                    [0, 0.3, 2, 1],
-                    [1, 1.5, 2.5, 1.0],
-                ],
-            )
-            output = interp(input, tfield)
-            output.sum().backward()
+        # for i in range(LEAK_TEST_ITER):
+        #     input = SparseTensor(feats, coordinates=coords, device="cuda")
+        #     tfield = torch.cuda.DoubleTensor(
+        #         [
+        #             [0, 0.1, 2.7, 2.2],
+        #             [0, 0.3, 2, 1],
+        #             [1, 1.5, 2.5, 1.0],
+        #         ],
+        #     )
+        #     output,_,_ = interp(input, tfield)
+        #     output.sum().backward()

@@ -480,6 +480,24 @@ at::Tensor InterpolationBackwardGPU(
     at::Tensor const &weights,      //
     CoordinateMapKey *p_in_map_key, //
     gpu_manager_type<coordinate_type, TemplatedAllocator> *p_map_manager);
+
+template <typename coordinate_type,
+          template <typename C> class TemplatedAllocator>
+std::vector<at::Tensor> InterpolationNormWeightForwardGPU(
+    at::Tensor const &in_feat,      //
+    at::Tensor const &tfield,       //
+    CoordinateMapKey *p_in_map_key, //
+    gpu_manager_type<coordinate_type, TemplatedAllocator> *p_map_manager);
+
+template <typename coordinate_type,
+          template <typename C> class TemplatedAllocator>
+at::Tensor InterpolationNormWeightBackwardGPU(
+    at::Tensor &grad_out_feat,      //
+    at::Tensor const &in_maps,      //
+    at::Tensor const &out_maps,     //
+    at::Tensor const &weights,      //
+    CoordinateMapKey *p_in_map_key, //
+    gpu_manager_type<coordinate_type, TemplatedAllocator> *p_map_manager);
 #endif
 
 /*************************************
@@ -666,6 +684,15 @@ void instantiate_gpu_func(py::module &m, const std::string &dtypestr) {
   m.def(
       (std::string("InterpolationBackwardGPU") + dtypestr).c_str(),
       &minkowski::InterpolationBackwardGPU<coordinate_type, TemplatedAllocator>,
+      py::call_guard<py::gil_scoped_release>());
+
+  m.def(
+      (std::string("InterpolationNormWeightForwardGPU") + dtypestr).c_str(),
+      &minkowski::InterpolationNormWeightForwardGPU<coordinate_type, TemplatedAllocator>,
+      py::call_guard<py::gil_scoped_release>());
+  m.def(
+      (std::string("InterpolationNormWeightBackwardGPU") + dtypestr).c_str(),
+      &minkowski::InterpolationNormWeightBackwardGPU<coordinate_type, TemplatedAllocator>,
       py::call_guard<py::gil_scoped_release>());
 }
 #endif

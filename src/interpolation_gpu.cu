@@ -108,6 +108,83 @@ at::Tensor InterpolationBackwardGPU(
                        grad_out_feat.size(0), grad_out_feat, 1, false);
 }
 
+template <typename coordinate_type,
+          template <typename C> class TemplatedAllocator>
+std::vector<at::Tensor> InterpolationNormWeightForwardGPU(
+    at::Tensor const &in_feat,      //
+    at::Tensor const &tfield,       //
+    CoordinateMapKey *p_in_map_key, //
+    gpu_manager_type<coordinate_type, TemplatedAllocator> *p_map_manager) {
+
+  ASSERT(in_feat.is_contiguous(), "in_feat must be contiguous");
+  ASSERT(in_feat.is_cuda(), "in_feat must be GPU");
+  ASSERT(in_feat.dim() == 2, "in_feat.dim():", in_feat.dim());
+
+  ASSERT(tfield.is_contiguous(), "tfield must be contiguous");
+  ASSERT(tfield.is_cuda(), "tfield must be GPU");
+  ASSERT(tfield.dim() == 2, "tfield.dim():", tfield.dim());
+
+  ASSERT(tfield.dtype() == in_feat.dtype(),
+         "tfield and in_feat must have the same dtype");
+
+  ASSERT(at::cuda::check_device({in_feat, tfield}),
+         "in_feat and tfield must be on the same device");
+
+  coordinate_map_key_type in_key = p_in_map_key->get_key();
+  ASSERT(p_map_manager->exists(in_key), ERROR_MAP_NOT_FOUND);
+
+  ASSERT(in_feat.size(0) == p_map_manager->size(in_key), "Invalid in_feat size",
+         in_feat.size(0), "!=", p_map_manager->size(in_key));
+
+  auto map_weight =
+      p_map_manager->interpolation_map_weight(tfield, p_in_map_key);
+
+  auto const &in_maps = map_weight[0];
+  auto const &out_maps = map_weight[1];
+  auto const &weights = map_weight[2];
+
+  torch::Tensor one_vector = at::ones({tfield.size(0), 1});
+
+  auto modified_weights= coo_spmm<int>(out_maps, in_maps, weights, tfield.size(0),
+                                in_feat.size(0), one_vector, 1, false);
+  map_weight[2]=modified_weights;
+  std::cout<<"modified_weights_gpu"<<modified_weights<<std::endl;
+  LOG_DEBUG("InterpolationForwardKernelGPU");
+  auto out_feat = coo_spmm<int>(out_maps, in_maps, weights, tfield.size(0),
+                                in_feat.size(0), in_feat, 1, false);
+  LOG_DEBUG("out_feat shape: (", out_feat.size(0), ",", out_feat.size(1), ")");
+  // to out_feats
+  map_weight.insert(map_weight.begin(), out_feat);
+  return map_weight;
+}
+
+template <typename coordinate_type,
+          template <typename C> class TemplatedAllocator>
+at::Tensor InterpolationNormWeightBackwardGPU(
+    at::Tensor &grad_out_feat,      //
+    at::Tensor const &in_maps,      //
+    at::Tensor const &out_maps,     //
+    at::Tensor const &weights,      //
+    CoordinateMapKey *p_in_map_key, //
+    gpu_manager_type<coordinate_type, TemplatedAllocator> *p_map_manager) {
+
+  if (!grad_out_feat.is_contiguous())
+    grad_out_feat = grad_out_feat.contiguous();
+  ASSERT(grad_out_feat.is_cuda(), "grad_out_feat must be CUDA");
+  ASSERT(grad_out_feat.dim() == 2, "grad_out_feat.dim():", grad_out_feat.dim());
+
+  coordinate_map_key_type in_key = p_in_map_key->get_key();
+  ASSERT(p_map_manager->exists(in_key), ERROR_MAP_NOT_FOUND);
+
+  uint32_t const in_nrows = p_map_manager->size(in_key);
+
+  LOG_DEBUG("InterpolationBackwardKernelGPU");
+  return coo_spmm<int>(in_maps, out_maps, weights, in_nrows,
+                       grad_out_feat.size(0), grad_out_feat, 1, false);
+}
+
+
+
 // Forward
 template std::vector<at::Tensor>
 InterpolationForwardGPU<default_types::dcoordinate_type,
@@ -139,6 +216,46 @@ template at::Tensor InterpolationBackwardGPU<default_types::dcoordinate_type,
         *p_map_manager);
 
 template at::Tensor InterpolationBackwardGPU<default_types::dcoordinate_type,
+                                             detail::c10_allocator>(
+    at::Tensor &grad_out_feat,      //
+    at::Tensor const &in_map,       //
+    at::Tensor const &out_map,      //
+    at::Tensor const &weight,       //
+    CoordinateMapKey *p_in_map_key, //
+    gpu_manager_type<default_types::dcoordinate_type, detail::c10_allocator>
+        *p_map_manager);
+
+// Forward
+template std::vector<at::Tensor>
+InterpolationNormWeightForwardGPU<default_types::dcoordinate_type,
+                        detail::default_allocator>(
+    at::Tensor const &in_feat,      //
+    at::Tensor const &tfield,       //
+    CoordinateMapKey *p_in_map_key, //
+    gpu_manager_type<default_types::dcoordinate_type, detail::default_allocator>
+        *p_map_manager);
+
+template std::vector<at::Tensor>
+InterpolationNormWeightForwardGPU<default_types::dcoordinate_type,
+                        detail::c10_allocator>(
+    at::Tensor const &in_feat,      //
+    at::Tensor const &tfield,       //
+    CoordinateMapKey *p_in_map_key, //
+    gpu_manager_type<default_types::dcoordinate_type, detail::c10_allocator>
+        *p_map_manager);
+
+// Backward
+template at::Tensor InterpolationNormWeightBackwardGPU<default_types::dcoordinate_type,
+                                             detail::default_allocator>(
+    at::Tensor &grad_out_feat,      //
+    at::Tensor const &in_map,       //
+    at::Tensor const &out_map,      //
+    at::Tensor const &weight,       //
+    CoordinateMapKey *p_in_map_key, //
+    gpu_manager_type<default_types::dcoordinate_type, detail::default_allocator>
+        *p_map_manager);
+
+template at::Tensor InterpolationNormWeightBackwardGPU<default_types::dcoordinate_type,
                                              detail::c10_allocator>(
     at::Tensor &grad_out_feat,      //
     at::Tensor const &in_map,       //

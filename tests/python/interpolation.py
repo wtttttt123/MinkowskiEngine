@@ -196,7 +196,7 @@ class TestInterpolation3D(unittest.TestCase):
         ).double()
         feats.requires_grad_()
         input = SparseTensor(feats, coordinates=coords)
-        interp = MinkowskiInterpolation(return_kernel_map=True, return_weights=True, normalise_weight=False)
+        interp = MinkowskiInterpolation(return_kernel_map=True, return_weights=True, normalise_weight=True)
         output, (in_map, out_map),weights = interp(input, tfield)
         #print('input_test',input)
         print("weights",weights,weights.shape)
@@ -248,10 +248,10 @@ class TestInterpolation3D(unittest.TestCase):
         )
         feats.requires_grad_()
         input = SparseTensor(feats, coordinates=coords, device="cuda")
-        interp = MinkowskiInterpolation()
-        output = interp(input, tfield)
-        # print(input)
-        # print(output)
+        interp = MinkowskiInterpolation(return_kernel_map=True, return_weights=True, normalise_weight=True)
+        output, (in_map, out_map),weights = interp(input, tfield)
+        print("input_gpu",input)
+        print("output_gpu",output)
 
         output.sum().backward()
         # Check backward

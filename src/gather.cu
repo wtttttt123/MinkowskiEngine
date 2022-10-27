@@ -1,6 +1,6 @@
 #include "gpu.cuh"
 #include "math_functions.cuh"
-#include "spmm.cuh"
+
 #include <cusparse.h>
 
 #include <ATen/core/Tensor.h>
@@ -9,7 +9,7 @@
 #include <c10/cuda/CUDACachingAllocator.h>
 #include <torch/extension.h>
 #include <torch/script.h>
-
+#include "spmm.cuh"
 
 namespace minkowski {
 

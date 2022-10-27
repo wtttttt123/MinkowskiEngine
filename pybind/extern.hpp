@@ -533,6 +533,14 @@ torch::Tensor coo_spmm(torch::Tensor const &rows, torch::Tensor const &cols,
                        int64_t const dim_j, torch::Tensor const &mat2,
                        int64_t const spmm_algorithm_id, bool const is_sorted);
 
+
+template <typename th_int_type>
+torch::Tensor weight_gather(torch::Tensor const &rows, torch::Tensor const &cols,
+                    int64_t const dim_i,int64_t const dim_j, 
+                    torch::Tensor const &mat_sum_weights, torch::Tensor const &mat_weights,
+                    bool const is_sorted);
+
+
 template <typename th_int_type>
 std::vector<torch::Tensor> // output, sorted rows, sorted cols, sorted vals.
 coo_spmm_average(torch::Tensor const &rows, torch::Tensor const &cols,
@@ -541,6 +549,11 @@ coo_spmm_average(torch::Tensor const &rows, torch::Tensor const &cols,
 
 std::pair<size_t, size_t> get_memory_info();
 #endif
+
+
+
+
+
 
 } // end namespace minkowski
 
@@ -712,6 +725,8 @@ void non_templated_cpu_func(py::module &m) {
 void non_templated_gpu_func(py::module &m) {
   m.def("coo_spmm_int32", &minkowski::coo_spmm<int32_t>,
         py::call_guard<py::gil_scoped_release>());
+  m.def("weight_gather_int32", &minkowski::weight_gather<int32_t>,
+        py::call_guard<py::gil_scoped_release>());   
   m.def("coo_spmm_average_int32", &minkowski::coo_spmm_average<int32_t>,
         py::call_guard<py::gil_scoped_release>());
 }

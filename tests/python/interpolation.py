@@ -31,6 +31,7 @@ from MinkowskiEngine import (
     MinkowskiConvolution,
     MinkowskiInterpolationFunction,
     MinkowskiInterpolation,
+    MinkowskiInterpolationNormWeightFunction
 )
 
 from utils.gradcheck import gradcheck
@@ -180,7 +181,7 @@ class TestInterpolation3D(unittest.TestCase):
     def test(self):
         in_channels, D = 2, 3
         coords = torch.IntTensor([[0, 0, 0,0], [0, 0, 0,1], [0, 0, 1, 0],[0, 0, 1,1],[0, 1, 0,0],[0, 1, 0,1],[0, 1, 1,0],[0,1,1,1]])
-        coords = torch.IntTensor([[0, 0, 0,0], [0, 0, 0,1], [0, 0, 1, 0],[0, 0, 1,1],[0, 1, 0,0],[0, 1, 0,1],[0, 1, 1,0]])
+        #coords = torch.IntTensor([[0, 0, 0,0], [0, 0, 0,1], [0, 0, 1, 0],[0, 0, 1,1],[0, 1, 0,0],[0, 1, 0,1],[0, 1, 1,0]])
         feats = torch.zeros(len(coords), 3)
         feats[:-1,:]=coords[:-1,1:]
         feats=coords[:,1:]
@@ -206,7 +207,8 @@ class TestInterpolation3D(unittest.TestCase):
 
         # Check backward
         output.sum().backward()
-        fn = MinkowskiInterpolationFunction()
+        #fn = MinkowskiInterpolationFunction()
+        fn = MinkowskiInterpolationNormWeightFunction()
         self.assertTrue(
             gradcheck(
                 fn,
@@ -235,7 +237,7 @@ class TestInterpolation3D(unittest.TestCase):
 
     def test_gpu(self):
         in_channels, D = 3, 3
-        coords = torch.IntTensor([[0, 0, 0,0], [0, 0, 0,1], [0, 0, 1, 0],[0, 0, 1,1],[0, 1, 0,0],[0, 1, 0,1],[0, 1, 1,0],[0,1,1,1]])
+        #coords = torch.IntTensor([[0, 0, 0,0], [0, 0, 0,1], [0, 0, 1, 0],[0, 0, 1,1],[0, 1, 0,0],[0, 1, 0,1],[0, 1, 1,0],[0,1,1,1]])
         coords = torch.IntTensor([[0, 0, 0,0], [0, 0, 0,1], [0, 0, 1, 0],[0, 0, 1,1],[0, 1, 0,0],[0, 1, 0,1],[0, 1, 1,0]])
 
         feats = torch.zeros(len(coords), 3)
@@ -263,7 +265,8 @@ class TestInterpolation3D(unittest.TestCase):
         print("out_map_gpu",out_map)
         output.sum().backward()
         # Check backward
-        fn = MinkowskiInterpolationFunction()
+        #fn = MinkowskiInterpolationFunction()
+        fn=MinkowskiInterpolationNormWeightFunction()
         self.assertTrue(
             gradcheck(
                 fn,

@@ -33,6 +33,7 @@
 
 #ifndef CPU_ONLY
 #include <thrust/host_vector.h>
+#include<thrust/gather.h>
 #endif
 
 namespace minkowski {

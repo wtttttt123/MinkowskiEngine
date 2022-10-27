@@ -48,5 +48,10 @@ std::vector<torch::Tensor> // output, sorted rows, sorted cols, sorted vals.
 coo_spmm_average(torch::Tensor const &rows, torch::Tensor const &cols,
                  int64_t const dim_i, int64_t const dim_j,
                  torch::Tensor const &mat2, int64_t const spmm_algorithm_id);
+
+cudaDataType getTensorCudaDataType(torch::Tensor const &self);
+
+
+
 } // namespace minkowski
 #endif

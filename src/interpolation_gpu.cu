@@ -33,6 +33,7 @@
 
 #include "interpolation_cpu.cpp"
 #include "spmm.cuh"
+#include "gather.cuh"
 
 #include <pybind11/pybind11.h>
 #include <torch/extension.h>
@@ -141,22 +142,24 @@ std::vector<at::Tensor> InterpolationNormWeightForwardGPU(
 
   auto const &in_maps = map_weight[0];
   auto const &out_maps = map_weight[1];
-  auto const &weights = map_weight[2];
-  std::cout<<"weights_gpu"<<weights<<std::endl;
+  auto &weights = map_weight[2];
+  //std::cout<<"weights_gpu"<<weights<<std::endl;
   torch::Tensor one_vector = at::ones({in_feat.size(0), 1},in_feat.options());
 
   auto sum_weights= coo_spmm<int>(out_maps, in_maps, weights, tfield.size(0),
                                 in_feat.size(0), one_vector, 1, false);
   //map_weight[2]=modified_weights;
-  std::cout<<"sum_weights_gpu"<<sum_weights<<std::endl;
-  LOG_DEBUG("InterpolationForwardKernelGPU");
+  
+  auto modified_weights = weight_gather<int>(out_maps,in_maps,tfield.size(0),in_feat.size(0),sum_weights, weights, true);
+  //std::cout<<"modified_weight"<<modified_weights<<std::endl;
+  weights=modified_weights;
+  LOG_DEBUG("InterpolationNormWeightForwardKernelGPU");
   auto out_feat = coo_spmm<int>(out_maps, in_maps, weights, tfield.size(0),
                                 in_feat.size(0), in_feat, 1, false);
   LOG_DEBUG("out_feat shape: (", out_feat.size(0), ",", out_feat.size(1), ")");
 
-  auto final_out=at::div(out_feat,sum_weights);
   // to out_feats
-  map_weight.insert(map_weight.begin(), final_out);
+  map_weight.insert(map_weight.begin(), out_feat);
   return map_weight;
 }
 
@@ -180,7 +183,7 @@ at::Tensor InterpolationNormWeightBackwardGPU(
 
   uint32_t const in_nrows = p_map_manager->size(in_key);
 
-  LOG_DEBUG("InterpolationBackwardKernelGPU");
+  LOG_DEBUG("InterpolationNormWeightBackwardKernelGPU");
   return coo_spmm<int>(in_maps, out_maps, weights, in_nrows,
                        grad_out_feat.size(0), grad_out_feat, 1, false);
 }
@@ -227,7 +230,7 @@ template at::Tensor InterpolationBackwardGPU<default_types::dcoordinate_type,
     gpu_manager_type<default_types::dcoordinate_type, detail::c10_allocator>
         *p_map_manager);
 
-// Forward
+// NormWeightForward
 template std::vector<at::Tensor>
 InterpolationNormWeightForwardGPU<default_types::dcoordinate_type,
                         detail::default_allocator>(
@@ -246,7 +249,7 @@ InterpolationNormWeightForwardGPU<default_types::dcoordinate_type,
     gpu_manager_type<default_types::dcoordinate_type, detail::c10_allocator>
         *p_map_manager);
 
-// Backward
+// NormWeightBackward
 template at::Tensor InterpolationNormWeightBackwardGPU<default_types::dcoordinate_type,
                                              detail::default_allocator>(
     at::Tensor &grad_out_feat,      //

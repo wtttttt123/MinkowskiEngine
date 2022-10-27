@@ -257,6 +257,7 @@ SOURCE_SETS = {
             "pruning_gpu.cu",
             "interpolation_gpu.cu",
             "spmm.cu",
+            "gather.cu",
             "gpu.cu",
             "quantization.cpp",
             "direct_max_pool.cpp",

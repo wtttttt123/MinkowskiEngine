@@ -35,7 +35,7 @@ from MinkowskiEngine import (
 )
 
 from utils.gradcheck import gradcheck
-from tests.python.common import data_loader
+from python.common import data_loader
 
 LEAK_TEST_ITER = 10000000
 LEAK_TEST_ITER = 100

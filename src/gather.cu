@@ -1,6 +1,6 @@
 #include "gpu.cuh"
 #include "math_functions.cuh"
-#include "spmm.cuh"
+
 #include <cusparse.h>
 
 #include <ATen/core/Tensor.h>
@@ -9,7 +9,7 @@
 #include <c10/cuda/CUDACachingAllocator.h>
 #include <torch/extension.h>
 #include <torch/script.h>
-
+#include "spmm.cuh"
 
 namespace minkowski {
 
@@ -122,11 +122,14 @@ torch::Tensor weight_gather(torch::Tensor const &rows, torch::Tensor const &cols
       sorted_col_ptr = col_indices_ptr;
       LOG_DEBUG("Initialized ptrs from inputs");
     }
+
     //////////////////////////////////////
-    // double *sorted_val_ptr;
-    // sorted_val_ptr = (double *)c10::cuda::CUDACachingAllocator::raw_alloc(
-    //       sizeY * sizeof(double));
-    // CUDA_CHECK(cudaMemcpy(sorted_val_ptr, mat_sum_weights_ptr, sizeY * sizeof(double),
+    // scalar_t *new_gather_ptr, *new_sum_weights_ptr;
+    // new_gather_ptr = (scalar_t *)c10::cuda::CUDACachingAllocator::raw_alloc(
+    //       nnz * sizeof(scalar_t));
+    // new_sum_weights_ptr = (scalar_t *)c10::cuda::CUDACachingAllocator::raw_alloc(
+    //       nnz * sizeof(scalar_t));
+    // CUDA_CHECK(cudaMemcpy(sorted_val_ptr, mat_sum_weights_ptr, sizeY * sizeof(scalar_t),
     //                         cudaMemcpyDeviceToDevice));
     //THRUST_CHECK(thrust::copy(sorted_val_ptr, sorted_val_ptr+sizeY,std::ostream_iterator<double>(std::cout,",,,")));
     

@@ -180,11 +180,12 @@ class TestInterpolation(unittest.TestCase):
 class TestInterpolation3D(unittest.TestCase):
     def test(self):
         in_channels, D = 2, 3
-        coords = torch.IntTensor([[0, 0, 0,0], [0, 0, 0,1], [0, 0, 1, 0],[0, 0, 1,1],[0, 1, 0,0],[0, 1, 0,1],[0, 1, 1,0],[0,1,1,1]])
-        #coords = torch.IntTensor([[0, 0, 0,0], [0, 0, 0,1], [0, 0, 1, 0],[0, 0, 1,1],[0, 1, 0,0],[0, 1, 0,1],[0, 1, 1,0]])
+        coords1 = torch.IntTensor([[0, 0, 0,0], [0, 0, 0,1], [0, 0, 1, 0],[0, 0, 1,1],[0, 1, 0,0],[0, 1, 0,1],[0, 1, 1,0],[0,1,1,1]])
+        coords = torch.IntTensor([[0, 1, 1,1], [0, 1, 1,2], [0, 1, 2, 1],[0, 1, 2,2],[0, 2, 1,1],[0, 2, 1,2],[0, 2, 2,1]])#,[0,2,2,2]])
+        coords11 = torch.IntTensor([[0, 0, 0,0], [0, 0, 0,1], [0, 0, 1, 0],[0, 0, 1,1],[0, 1, 0,0],[0, 1, 0,1],[0, 1, 1,0]])
         feats = torch.zeros(len(coords), 3)
-        feats[:-1,:]=coords[:-1,1:]
-        feats=coords[:,1:]
+        #feats[:-1,:]=coords[:-1,1:]
+        feats=coords11[:,1:]
         #print("fff",feats)
         feats = feats.double()
         tfield = torch.Tensor(
@@ -192,7 +193,8 @@ class TestInterpolation3D(unittest.TestCase):
                 [0, 0.2, 0.2, 0.2],
                 #[0, 0.3, 0.6, 1.0],
                 [0, 0.5, 0.5, 0.5],
-                #[0, 0.5, 0.5, 0.2],
+                [0, 5, 5, 5],
+                [0, 1.5, 1.5, 1.5],
             ]
         ).double()
         feats.requires_grad_()

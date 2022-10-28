@@ -150,8 +150,13 @@ std::vector<at::Tensor> InterpolationNormWeightForwardGPU(
                                 in_feat.size(0), one_vector, 1, false);
   //map_weight[2]=modified_weights;
   
+<<<<<<< HEAD
   auto modified_weights = weight_gather<int>(out_maps,in_maps,tfield.size(0),in_feat.size(0),sum_weights, weights, false);
   //std::cout<<"modified_weight"<<modified_weights<<std::endl;
+=======
+  auto modified_weights = weight_gather<int>(out_maps,in_maps,tfield.size(0),in_feat.size(0),sum_weights, weights, true);
+  //std::cout<<"sum_weight"<<sum_weights<<std::endl;
+>>>>>>> 76a00f5131e4e364139f9847917c5b3d70277837
   weights=modified_weights;
   LOG_DEBUG("InterpolationNormWeightForwardKernelGPU");
   auto out_feat = coo_spmm<int>(out_maps, in_maps, weights, tfield.size(0),

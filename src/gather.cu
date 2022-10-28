@@ -59,7 +59,7 @@ torch::Tensor weight_gather(torch::Tensor const &rows, torch::Tensor const &cols
   LOG_DEBUG("Creating a result mat shaped (", dim_k, ",", nnz, ")");
   torch::Tensor thrust_gather_output=at::zeros({nnz,1}, mat_sum_weights.options());
   torch::Tensor thrust_divide_output=at::zeros({nnz,1}, mat_weights.options());
-
+  torch::Tensor thrust_gather_plus_output=at::zeros({nnz,1}, mat_sum_weights.options());
 
   if ((dim_j == 0) || (dim_k == 0) || (nnz == 0)) {
     LOG_DEBUG("Skipping matmul dim_j:", dim_j, "dim_k:", dim_k, "nnz:", nnz);
@@ -89,6 +89,9 @@ torch::Tensor weight_gather(torch::Tensor const &rows, torch::Tensor const &cols
     scalar_t *mat_weights_ptr = reinterpret_cast<scalar_t *>(mat_weights_contig.data_ptr());
 
     th_int_type *sorted_row_ptr, *sorted_col_ptr;
+    thrust::device_vector<scalar_t> epsilon(sizeY);
+    thrust::fill(epsilon.begin(),epsilon.end(),1e-6);
+
     //////////////////////////////////////
     // Sort the sparse matrix COO
     LOG_DEBUG("Is sorted", is_sorted);
@@ -122,11 +125,14 @@ torch::Tensor weight_gather(torch::Tensor const &rows, torch::Tensor const &cols
       sorted_col_ptr = col_indices_ptr;
       LOG_DEBUG("Initialized ptrs from inputs");
     }
+
     //////////////////////////////////////
-    // double *sorted_val_ptr;
-    // sorted_val_ptr = (double *)c10::cuda::CUDACachingAllocator::raw_alloc(
-    //       sizeY * sizeof(double));
-    // CUDA_CHECK(cudaMemcpy(sorted_val_ptr, mat_sum_weights_ptr, sizeY * sizeof(double),
+    // scalar_t *new_gather_ptr, *new_sum_weights_ptr;
+    // new_gather_ptr = (scalar_t *)c10::cuda::CUDACachingAllocator::raw_alloc(
+    //       nnz * sizeof(scalar_t));
+    // new_sum_weights_ptr = (scalar_t *)c10::cuda::CUDACachingAllocator::raw_alloc(
+    //       nnz * sizeof(scalar_t));
+    // CUDA_CHECK(cudaMemcpy(sorted_val_ptr, mat_sum_weights_ptr, sizeY * sizeof(scalar_t),
     //                         cudaMemcpyDeviceToDevice));
     //THRUST_CHECK(thrust::copy(sorted_val_ptr, sorted_val_ptr+sizeY,std::ostream_iterator<double>(std::cout,",,,")));
     
@@ -138,9 +144,17 @@ torch::Tensor weight_gather(torch::Tensor const &rows, torch::Tensor const &cols
                                 ));
     
     THRUST_CHECK(thrust::transform(thrust::device,       //
+                            thrust_gather_output.data<scalar_t>(),            // key begin
+                            thrust_gather_output.data<scalar_t>() + nnz,     // key end
+                            epsilon.begin(),
+                            thrust_gather_plus_output.data<scalar_t>(),
+                            thrust::plus<scalar_t>())
+                            );
+
+    THRUST_CHECK(thrust::transform(thrust::device,       //
                                 mat_weights_ptr,            // key begin
                                 mat_weights_ptr + nnz,      // key end
-                                thrust_gather_output.data<scalar_t>(),
+                                thrust_gather_plus_output.data<scalar_t>(),
                                 thrust_divide_output.data<scalar_t>(),
                                 thrust::divides<scalar_t>())
                                 );

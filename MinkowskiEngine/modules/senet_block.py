@@ -63,7 +63,7 @@ class SEBasicBlock(BasicBlock):
             stride=stride,
             dilation=dilation,
             downsample=downsample,
-            D=D)
+            dimension==D)
         self.se = SELayer(planes, reduction=reduction, D=D)
 
     def forward(self, x):
@@ -102,7 +102,7 @@ class SEBottleneck(Bottleneck):
             stride=stride,
             dilation=dilation,
             downsample=downsample,
-            D=D)
+            dimension==D)
         self.se = SELayer(planes * self.expansion, reduction=reduction, D=D)
 
     def forward(self, x):

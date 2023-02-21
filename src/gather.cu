@@ -89,7 +89,7 @@ torch::Tensor weight_gather(torch::Tensor const &rows, torch::Tensor const &cols
 
     th_int_type *sorted_row_ptr, *sorted_col_ptr;
     thrust::device_vector<scalar_t> epsilon(nnz);
-    thrust::fill(epsilon.begin(),epsilon.end(),1e-6);
+    thrust::fill(epsilon.begin(),epsilon.end(),0.0f);
     thrust::device_vector<scalar_t> gather_plus(sizeY);
     //////////////////////////////////////
     // Sort the sparse matrix COO
